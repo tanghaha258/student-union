@@ -1,0 +1,397 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String
+  icon        String   @default("User")
+  gradient    String   @default("linear-gradient(135deg, #667eea 0%, #764ba2 100%)")
+  permissions String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("roles")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  password     String
+  realName     String?
+  nickname     String?
+  email        String?  @unique
+  phone        String?
+  avatar       String?
+  role         String   @default("MEMBER")
+  position     String?
+  status       String   @default("ACTIVE")
+  studentId    String?  @unique
+  className    String?
+  politicalStatus String?
+  qq           String?
+  address      String?
+  bio          String?
+  enrollmentYear String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  department   Department?  @relation(fields: [departmentId], references: [id])
+  departmentId String?
+  activities   Activity[]   @relation("ActivityOrganizer")
+  activityParticipants ActivityParticipant[]
+  announcements Announcement[] @relation("AnnouncementAuthor")
+  
+  // 报名模块关联
+  registrations Registration[]
+  reviewedRegistrations Registration[] @relation("RegistrationReviewer")
+  organizedRegistrations RegistrationActivity[] @relation("RegistrationActivityOrganizer")
+  reviewedActivityParticipants ActivityParticipant[] @relation("ActivityParticipantReviewer")
+  
+  // 评优模块关联
+  evaluationReviews EvaluationReviewer[]
+  evaluationApplications EvaluationApplication[]
+  reviews EvaluationReview[]
+  organizedEvaluations EvaluationActivity[] @relation("EvaluationActivityOrganizer")
+  
+  // 通知模块关联
+  sentNotifications Notification[] @relation("NotificationSender")
+  notificationReads NotificationRead[]
+  
+  // 学分评优关联
+  creditRecords     CreditRecord[]
+  evaluationResults EvaluationPeriodResult[]
+
+  @@map("users")
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  title       String
+  content     String
+  priority    Int      @default(3)
+  targetType  String   @default("ALL")
+  targetIds   String?
+  senderId    String
+  sender      User     @relation("NotificationSender", fields: [senderId], references: [id])
+  reads       NotificationRead[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("notifications")
+}
+
+model NotificationRead {
+  id             String       @id @default(uuid())
+  notificationId String
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt         DateTime     @default(now())
+  confirmed      Boolean      @default(false)
+
+  @@unique([notificationId, userId])
+  @@map("notification_reads")
+}
+
+model Department {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members     User[]
+
+  @@map("departments")
+}
+
+model Activity {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  startDate   DateTime          // 活动开始时间
+  endDate     DateTime?         // 活动结束时间
+  registrationStart DateTime?   // 报名开始时间
+  registrationEnd   DateTime?   // 报名截止时间
+  location    String?
+  status      String   @default("DRAFT")  // DRAFT/UPCOMING/REGISTERING/REGISTRATION_CLOSED/ONGOING/COMPLETED/CANCELLED
+  maxParticipants Int?
+  participantCount Int  @default(0)
+  requireApproval Boolean @default(false)
+  creditEnabled   Boolean @default(false)
+  creditType      String?
+  creditValue     Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  organizer   User?    @relation("ActivityOrganizer", fields: [organizerId], references: [id])
+  organizerId String?
+  participants ActivityParticipant[]
+  creditRecords  CreditRecord[]
+
+  @@map("activities")
+}
+
+model ActivityParticipant {
+  id          String   @id @default(uuid())
+  status      String   @default("PENDING")  // PENDING/APPROVED/REJECTED/CANCELLED
+  remark      String?
+  reviewedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  activity    Activity  @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  activityId  String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  reviewer    User?    @relation("ActivityParticipantReviewer", fields: [reviewerId], references: [id])
+  reviewerId  String?
+
+  @@unique([activityId, userId])
+  @@map("activity_participants")
+}
+
+model Announcement {
+  id          String   @id @default(uuid())
+  title       String
+  content     String
+  priority    Int      @default(1)
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  author      User?    @relation("AnnouncementAuthor", fields: [authorId], references: [id])
+  authorId    String?
+
+  @@map("announcements")
+}
+
+// 报名模块
+model RegistrationActivity {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  eventDate   DateTime
+  location    String?
+  maxParticipants Int?
+  status      String   @default("OPEN")
+  requireApproval Boolean @default(false)
+  creditEnabled   Boolean @default(false)
+  creditType      String?  // COMPREHENSIVE/SECOND_CLASSROOM/VOLUNTEER/SPORTS_CULTURE
+  creditValue     Float?   // 学分值
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  organizer   User?    @relation("RegistrationActivityOrganizer", fields: [organizerId], references: [id])
+  organizerId String?
+  registrations Registration[]
+  creditRecords  CreditRecord[]
+
+  @@map("registration_activities")
+}
+
+model Registration {
+  id          String   @id @default(uuid())
+  status      String   @default("PENDING")
+  remark      String?
+  reviewedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  activity    RegistrationActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  activityId  String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  reviewer    User?    @relation("RegistrationReviewer", fields: [reviewerId], references: [id])
+  reviewerId  String?
+
+  @@unique([activityId, userId])
+  @@map("registrations")
+}
+
+// 评优模块
+model EvaluationActivity {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  type        String
+  startDate   DateTime
+  endDate     DateTime
+  reviewStartDate DateTime
+  reviewEndDate   DateTime
+  announceDate DateTime
+  status      String   @default("DRAFT")
+  criteria    String?
+  maxAwards   Int
+  requireMaterial Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  organizer   User?    @relation("EvaluationActivityOrganizer", fields: [organizerId], references: [id])
+  organizerId String?
+  applications EvaluationApplication[]
+  reviewers   EvaluationReviewer[]
+
+  @@map("evaluation_activities")
+}
+
+model EvaluationReviewer {
+  id          String   @id @default(uuid())
+
+  activity    EvaluationActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  activityId  String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+
+  @@unique([activityId, userId])
+  @@map("evaluation_reviewers")
+}
+
+model EvaluationApplication {
+  id          String   @id @default(uuid())
+  status      String   @default("PENDING")
+  materials   String?
+  selfEvaluation String?
+  totalScore  Float?
+  rank        Int?
+  remark      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  activity    EvaluationActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  activityId  String
+  applicant   User     @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  applicantId String
+  reviews     EvaluationReview[]
+
+  @@map("evaluation_applications")
+}
+
+model EvaluationReview {
+  id          String   @id @default(uuid())
+  score       Float
+  comment     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  application EvaluationApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  applicationId String
+  reviewer    User     @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewerId  String
+
+  @@unique([applicationId, reviewerId])
+  @@map("evaluation_reviews")
+}
+
+// 学生会招新模块
+model Recruitment {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  status      String   @default("OPEN")
+  banner      String?
+  intro       String?
+  requirements String?
+  benefits    String?
+  process     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  applications RecruitmentApplication[]
+
+  @@map("recruitments")
+}
+
+model RecruitmentApplication {
+  id          String   @id @default(uuid())
+  name        String
+  studentId   String
+  className   String
+  phone       String
+  email       String?
+  qq          String?
+  gender      String?
+  birthday    String?
+  skills      String?
+  experience  String?
+  reason      String?
+  expectation String?
+  department1 String?
+  department2 String?
+  isAdjusted  Boolean  @default(false)
+  status      String   @default("PENDING")
+  remark      String?
+  interviewTime String?
+  interviewLocation String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  recruitment   Recruitment @relation(fields: [recruitmentId], references: [id], onDelete: Cascade)
+  recruitmentId String
+
+  @@map("recruitment_applications")
+}
+
+// 学分记录
+model CreditRecord {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String   // COMPREHENSIVE/SECOND_CLASSROOM/VOLUNTEER/SPORTS_CULTURE
+  value       Float
+  source      String   // ACTIVITY/REGISTRATION_ACTIVITY/MANUAL
+  activityId  String?  // 关联 Activity
+  activity    Activity? @relation(fields: [activityId], references: [id])
+  registrationActivityId String?  // 关联 RegistrationActivity
+  registrationActivity   RegistrationActivity? @relation(fields: [registrationActivityId], references: [id])
+  description String?
+  operatorId  String?
+  createdAt   DateTime @default(now())
+
+  @@map("credit_records")
+}
+
+// 评优周期
+model EvaluationPeriod {
+  id          String   @id @default(uuid())
+  name        String
+  type        String   // SEMESTER/YEAR/CUSTOM
+  startDate   DateTime
+  endDate     DateTime
+  status      String   @default("DRAFT") // DRAFT/CALCULATING/PUBLISHED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  results     EvaluationPeriodResult[]
+
+  @@map("evaluation_periods")
+}
+
+// 评优结果
+model EvaluationPeriodResult {
+  id           String          @id @default(uuid())
+  periodId     String
+  period       EvaluationPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalCredit  Float
+  rank         Int
+  level        String          // EXCELLENT/GOOD/QUALIFIED/UNQUALIFIED
+  remark       String?
+  createdAt    DateTime        @default(now())
+
+  @@unique([periodId, userId])
+  @@map("evaluation_period_results")
+}
