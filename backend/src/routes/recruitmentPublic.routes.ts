@@ -1,8 +1,7 @@
 import { Router, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // 获取当前招新活动（公开接口，无需登录）
 router.get('/current', async (req, res: Response) => {

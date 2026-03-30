@@ -2,12 +2,11 @@ import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 import config from '../config';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 const registerValidation = [
   body('username').isLength({ min: 3, max: 20 }).withMessage('用户名长度需在3-20之间'),

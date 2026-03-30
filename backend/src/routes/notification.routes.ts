@@ -1,9 +1,8 @@
 import { Router, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 import { authenticate, authorize, AuthRequest } from '../middlewares/auth';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // 获取当前用户的通知列表
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {

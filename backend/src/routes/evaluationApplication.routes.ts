@@ -1,9 +1,8 @@
 import { Router, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 import { authenticate, authorize, AuthRequest } from '../middlewares/auth';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // 提交评优申请
 router.post('/', authenticate, async (req: AuthRequest, res: Response) => {

@@ -1,12 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { body, query, validationResult } from 'express-validator';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 import { authenticate, authorize, AuthRequest } from '../middlewares/auth';
 import config from '../config';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
